@@ -19,11 +19,15 @@ const paths = {
     custom,
 }
 
+const dev = {
+    misc, 
+}
+
 import fs from "fs-extra";
 
 export const init_path = async () => {
 
-    const ls = Object.values(paths)
+    const ls = process.env.GET_ROOT?.endsWith('.exe') ? Object.values(paths) : Object.values(dev)
 
     for (const i of ls) {
 

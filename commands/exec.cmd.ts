@@ -6,11 +6,10 @@ const { _path } = globalThis._rib_path
 const { colored_prefix } = globalThis._rib_color
 const utils = globalThis._rib_utils
 const { cmd_register } = globalThis._rib_types
+const fs = globalThis._rib_mod_fs_extra
 
 import enquirer from 'enquirer'
 const { prompt } = enquirer
-
-import fs from 'fs-extra'
 
 import path from 'path';
 

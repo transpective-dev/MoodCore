@@ -1,12 +1,12 @@
 // for creating something. like schema and temp
 
 import path from 'path'
-import fs from 'fs-extra';
 
 const { _path } = globalThis._rib_path;
 const { colored_prefix } = globalThis._rib_color;
 const { cmd_register } = globalThis._rib_types;
 const { prompt } = globalThis._rib_mod_enquirer;
+const fs = globalThis._rib_mod_fs_extra;
 
 const command_temp = globalThis._rib_cmd_temp;
 

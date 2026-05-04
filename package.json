@@ -1,6 +1,6 @@
 {
-  "name": "ribbon-ai-guard",
-  "version": "0.0.0-beta",
+  "name": "mood-core",
+  "version": "0.0.1-beta",
   "type": "module",
   "description": "A safe CLI. Protect you from unexpected executing.",
   "main": "./src/logics/index.ts",
