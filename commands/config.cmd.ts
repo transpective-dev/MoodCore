@@ -1,12 +1,9 @@
-import type { cmd_register } from "../src/logics/templates/interface.ts";
 const { rib_conf } = globalThis._rib_manage;
-import chalk from 'chalk'
-import enquirer from 'enquirer'
-const { prompt } = enquirer;
-
-import type { t_config_schema } from "../src/logics/templates/schema.ts";
-
-import { pallete } from "../src/logics/utils/color.ts";
+const { prompt } = globalThis._rib_mod_enquirer;
+const { cmd_register } = globalThis._rib_types;
+const chalk = globalThis._rib_mod_chalk;
+const { pallete } = globalThis._rib_color;
+const { t_config_schema } = globalThis._rib_schema;
 
 export default {
     command: 'config',
@@ -90,11 +87,11 @@ export default {
             })
 
             if (select && typeof select === 'object' && 'key' in select && select.key) {
-                rib_conf.toggle(select.key as keyof t_config_schema['settings'])
+                rib_conf.toggle(select.key as keyof typeof t_config_schema['settings'])
             }
 
         }
 
 
     }
-} satisfies cmd_register;
+} satisfies typeof cmd_register;

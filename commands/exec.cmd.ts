@@ -1,23 +1,18 @@
-import { rib_conf } from "../src/logics/manage.ts";
-import _interface from "../src/logics/templates/interface.ts";
+const { rib_conf } = globalThis._rib_manage
+const { execution_guard } = globalThis._rib_eg
+const { type_checker } = globalThis._rib_tk
+const { spawnChild, isRibCmd } = globalThis._rib_spawn
+const { _path } = globalThis._rib_path
+const { colored_prefix } = globalThis._rib_color
+const utils = globalThis._rib_utils
+const { cmd_register } = globalThis._rib_types
 
 import enquirer from 'enquirer'
 const { prompt } = enquirer
 
 import fs from 'fs-extra'
 
-import { colored_prefix } from "../src/logics/utils/color.ts";
-
-import utils from "../src/logics/utils/utils.ts";
-import { execution_guard } from "../src/logics/utils/executions/execution_guard.ts";
-import { type_checker } from "../src/logics/utils/executions/type_checker.ts";
-import { spawnChild } from "../src/api/spawn.ts";
-import _path from "../src/logics/path.ts"
 import path from 'path';
-
-import { runtime } from '../src/logics/env.ts';
-
-import type { cmd_register } from "../src/logics/templates/interface.ts";
 
 const runScript = async (filename: string) => {
 
@@ -29,7 +24,7 @@ const runScript = async (filename: string) => {
 
     const toTarget = path.join(_path.paths.scripts, filename + '.script.ts')
 
-    const cmd = runtime === 'bun' ?
+    const cmd = process.env.RIB_RUNTIME === 'bun' ?
         `bun "${toTarget}"` :
         `npx tsx "${toTarget}"`;
 
@@ -159,11 +154,13 @@ export default {
             return;
         }
 
-        const replaced_cmd = await type_checker(get.cmd, args);
-
+        let replaced_cmd = await type_checker(get.cmd, args);
+        
         if (!replaced_cmd) {
             return console.log(colored_prefix.error + 'command execution failed');
         }
+
+        replaced_cmd = isRibCmd(replaced_cmd);
 
         spawnChild({
             cmd: replaced_cmd
@@ -171,4 +168,4 @@ export default {
 
     }
 
-} satisfies cmd_register;
+} satisfies typeof cmd_register;

@@ -1,8 +1,7 @@
-import { rib_conf } from "../src/logics/manage.ts";
-import utils from "../src/logics/utils/utils.ts";
-import enquirer from 'enquirer'
-const { prompt } = enquirer
-    ;
+const { rib_conf } = globalThis._rib_manage;
+const { utils } = globalThis._rib_utils;
+const { cmd_register } = globalThis._rib_types;
+const { prompt } = globalThis._rib_mod_enquirer;
 
 export default {
     command: 'del',
@@ -48,4 +47,4 @@ export default {
         }
 
     }
-}
+} satisfies typeof cmd_register

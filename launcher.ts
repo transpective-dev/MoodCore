@@ -13,7 +13,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import { pallete } from "./src/logics/utils/color.ts";
-import { spawnChild } from "./src/api/spawn.ts";
+import { spawnChild, isRibCmd } from "./src/api/spawn.ts";
 import chalk from "chalk";
 
 import readline from "readline";
@@ -103,13 +103,7 @@ const startLoop = async () => {
 
       try {
 
-        const regex = /(?:^|\s)\brib\b(?:\s|$)/g
-
-        const ifRib = env.INDEX_FILE?.endsWith('.exe') ? `"${env.INDEX_FILE}" ` : `bun run \"${env.INDEX_FILE}\" `
-
-        if (regex.test(answer)) {
-          answer = answer.replace(regex, ifRib);
-        }
+        answer = isRibCmd(answer);
 
         // Create the controller early so Ctrl+C during prompt doesn't exit the whole app
         activeController = new AbortController();

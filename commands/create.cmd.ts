@@ -1,15 +1,14 @@
 // for creating something. like schema and temp
 
-import _path from "../src/logics/path.ts";
 import path from 'path'
-import { colored_prefix } from "../src/logics/utils/color.ts";
-import type { cmd_register } from '../src/logics/templates/interface.ts';
-import command_temp from '../src/logics/templates/create_temps/cmd_temp.ts'
-import enquirer from 'enquirer';
-const { prompt } = enquirer;
 import fs from 'fs-extra';
 
-const platform = process.platform === 'win32' ? 'win' : 'linux'
+const { _path } = globalThis._rib_path;
+const { colored_prefix } = globalThis._rib_color;
+const { cmd_register } = globalThis._rib_types;
+const { prompt } = globalThis._rib_mod_enquirer;
+
+const command_temp = globalThis._rib_cmd_temp;
 
 const _init = async ({
     name, showcase, type
@@ -162,4 +161,4 @@ export default {
         }
 
     }
-} satisfies cmd_register;
+} satisfies typeof cmd_register;

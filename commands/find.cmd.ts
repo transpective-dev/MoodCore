@@ -1,8 +1,6 @@
-import { rib_conf } from "../src/logics/manage.ts";
-import utils from "../src/logics/utils/utils.ts";
-
-// Try to import interface
-import _interface, { type cmd_register } from "../src/logics/templates/interface.ts";
+const { rib_conf } = globalThis._rib_manage
+const { utils } = globalThis._rib_utils
+const { search_types, cmd_register } = globalThis._rib_types
 
 export default {
     command: 'find',
@@ -15,7 +13,7 @@ export default {
     ],
     action: (value: any, options: any) => {
 
-        const searchTypes = _interface.search_types || ['tag', 'cmd', 'abs', 'id', 'all'];
+        const searchTypes = search_types || ['tag', 'cmd', 'abs', 'id', 'all'];
 
         if (!options.type || !searchTypes.includes(options.type)) {
             console.log("Invalid search type. We'll use 'all' as default");
@@ -46,4 +44,4 @@ export default {
         console.log(res)
 
     }
-} satisfies cmd_register
+} satisfies typeof cmd_register

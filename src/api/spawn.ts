@@ -82,6 +82,19 @@ export class Spawn {
 
 }
 
+export const isRibCmd = (cmd: string) => {
+    
+    const regex = /(?:^|\s)\brib\b(?:\s|$)/g
+
+    const ifRib = process.env.INDEX_FILE?.endsWith('.exe') ? `"${process.env.INDEX_FILE}" ` : `bun run \"${process.env.INDEX_FILE}\" `
+
+    if (regex.test(cmd)) {
+        return cmd.replace(regex, ifRib);
+    }
+
+    return cmd;
+}
+
 // private
 
 export const spawnChild = ({

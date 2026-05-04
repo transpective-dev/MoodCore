@@ -203,6 +203,18 @@
 				"rg",
 				"code"
 			]
+		},
+		"test": {
+			"id": "SYS016",
+			"time": "1955-02-24 00:00:00",
+			"abs": "search code ripgrep",
+			"desc": "Search for a given string in files, showing line numbers.",
+			"cmd": "rib run rgs \"ts\" \"ts\" ; echo hello",
+			"tags": [
+				"search",
+				"rg",
+				"code"
+			]
 		}
 	},
 	"user": {}

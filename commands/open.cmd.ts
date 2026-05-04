@@ -1,7 +1,8 @@
-import type { cmd_register } from "../src/logics/templates/interface.ts";
-import { spawnChild } from "../src/api/spawn.ts";
-import { platform } from "../src/logics/env.ts";
-import _path from "../src/logics/path.ts";
+const { cmd_register } = globalThis._rib_types;
+const { spawnChild } = globalThis._rib_spawn;
+const _path = globalThis._rib_path;
+
+const platform = process.env.USR_PLATFORM;
 
 export default {
     command: "open",
@@ -41,4 +42,4 @@ export default {
                 break
         }
     }
-} satisfies cmd_register;
+} satisfies typeof cmd_register;

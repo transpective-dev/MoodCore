@@ -1,5 +1,6 @@
-import { rib_conf } from "../src/logics/manage.ts";
-import utils from "../src/logics/utils/utils.ts";
+const { rib_conf } = globalThis._rib_manage;
+const { utils } = globalThis._rib_utils;
+const { cmd_register } = globalThis._rib_types
 
 export default {
     command: 'register',
@@ -72,4 +73,4 @@ export default {
         }
 
     }
-};
+} satisfies typeof cmd_register;
