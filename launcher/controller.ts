@@ -5,7 +5,20 @@ import strWidth from 'string-width'
 // keymap 
 
 export const keyMap = {
-    'exit': '\u0003',
+    'ctrl+c': '\u0003',
+    'move_cursor': (which: 'r' | 'l' | 'd' | 'u', step: number = 1) => {
+
+        const assign = (char: string) => {
+            return `\x1b[${step}${char}`
+        }
+
+        switch (which) {
+            case 'r': return assign('C'); // move right
+            case 'l': return assign('D'); // move left
+            case 'd': return assign('B'); // move down
+            case 'u': return assign('A'); // move up
+        }
+    }
 }
 
 export type T_keyMap = keyof typeof keyMap;
@@ -32,6 +45,23 @@ export const executor = {
             console.log("\n\nExiting Ribbon...");
             process.exit(0);
         }
+    },
+    "move_between": ({
+        direction, step, start = false
+    }: {
+        direction: 'u' | 'd' | 'l' | 'r',
+        step: number
+        start: boolean
+    }) => {
+
+        let converted = keyMap.move_cursor(direction, step);
+
+        if (start) {
+            converted += '\r'
+        }
+
+        return stdout.write(converted);
+
     }
 
 }
@@ -43,7 +73,6 @@ const prefix = () => {
 };
 
 import { stdin, stdout } from 'node:process';
-import { listeners } from "node:cluster";
 
 stdin.setRawMode(true);
 stdin.resume();
@@ -56,7 +85,7 @@ let suggestion = "run-test-command"; // 假设这是匹配到的建议
 let is_prefix_initialized = false
 
 const is_overflow = (): { overflow: boolean, actual_lines: number, estimated_lines: number } => {
-    
+
     const get_col = () => stdout.columns;
 
     const estimated_lines = Math.ceil((visual_length + 1) / get_col())
@@ -64,13 +93,13 @@ const is_overflow = (): { overflow: boolean, actual_lines: number, estimated_lin
     const overflow = estimated_lines > 1
 
     const actual_lines = buffer.split('\n').length
-    
+
     return {
         overflow,
         actual_lines,
         estimated_lines
     }
-    
+
 }
 
 const handle_line_clean = () => {
@@ -83,7 +112,7 @@ const handle_line_clean = () => {
         stdout.write(`\x1b[${actual_lines}A\r`)
 
     }
-    
+
     // clean all lines
     return stdout.write(`\x1b[${strWidth(prefix() + 1)}G\x1b[J`);
 
@@ -145,16 +174,17 @@ stdin.on('data', (key: string) => {
     else if (key.length === 1 && key.charCodeAt(0) >= 32) {
 
         const { overflow, estimated_lines, actual_lines } = is_overflow();
-        
+
         if (overflow && (actual_lines < estimated_lines)) {
             buffer += '\n' + key
         } else {
             buffer += key;
         }
-        
+
     }
 
     render();
+    
 });
 
 render();
