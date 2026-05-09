@@ -125,7 +125,7 @@ export const spawnChild = ({
         }
 
         if (!await execution_guard(cmd)) {
-            return;
+            return reject(false);
         }
 
         const shell = shellStatus();

@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { pallete } from "../src/logics/utils/color.ts";
 import strWidth from 'string-width'
 import { isRibCmd, spawnChild } from '../src/api/spawn.ts'
-import { direction, type t_direction } from './interface.ts'
+import { type t_direction } from './interface.ts'
 
 // keymap 
 
@@ -75,7 +75,7 @@ export const handler = {
 		} else {
 			// If no process is running, Ctrl+C closes the REPL entirely
 			console.log("\n\nExiting mood-core ...");
-			process.exit(0);
+			process.exit();
 		}
 	},
 	"move_between": ({
@@ -137,86 +137,12 @@ let suggestion = "run-test-command"; // auto-fill
 
 let is_prefix_initialized = false
 
-// get display column dynamically
-const display_col = () => stdout.columns;
-
-import backlander from '../src/background_console/index.ts'
-
-const bc = await backlander.backlander({ dispose: 'auto' })
-
-const handle_buffer_change = (type: 'add' | 'del', char?: string) =>
-{
-
-
-	switch (type) {
-
-		case 'add':
-
-			let build_up: string | null = null
-
-			if (char) {
-
-				// handle \n end 
-
-				// save a space for later adding 
-				if (visual_length % (display_col() - 1) === 0) {
-					build_up = char + '\n'
-				} else {
-					build_up = char
-				}
-
-			}
-
-
-			if (build_up) {
-				stdout.write(build_up)
-			};
-
-			buffer += build_up || '';
-
-			break;
-
-		case 'del':
-
-			bc.log(visual_length + ' ' + buffer.length)
-
-			stdout.write('\b \b');
-
-			const split_by_newline = buffer.split('\n')
-
-			const last_obj = split_by_newline.pop()
-
-			const sliced = last_obj?.slice(0, -1)
-
-			if (sliced) {
-
-				split_by_newline.push(sliced)
-
-			}
-
-			const rebuild = split_by_newline.join('\n')
-
-			buffer = rebuild;
-
-			// visual length only calc printable characters
-			const K = display_col() - 1;
-
-			const is_line_start = (visual_length - 1) > 0 && (visual_length - 1) % K === 0;
-
-			if (is_line_start) {
-				stdout.write(keyMap.move_cursor('u', 1) + '\x1b[999C');
-			}
-
-			break;
-	}
-
-}
-
 const render = () =>
 {
 
 	visual_buffer = prefix() + buffer;
 
+	// +1 for if key was char
 	visual_length = strWidth(visual_buffer) + 1;
 
 	if (!is_prefix_initialized) {
@@ -227,10 +153,7 @@ const render = () =>
 
 	}
 
-	// 注意：不再调用 stdout.write(buffer) 导致全局重绘！
-	// 输入和删除的字符变更已经由 handle_buffer_change 处理完毕。
-
-	// 3. 如果有建议，打印灰色部分
+	// auto-conplete and suggestion
 	const ghostText = (): string =>
 	{
 		if (suggestion.startsWith(buffer) && buffer.length > 0) {
@@ -255,8 +178,15 @@ const render = () =>
 
 };
 
+let is_executing = false;
+
+import backlander from '../src/background_console/index.ts'
+
+const bc = await backlander.backlander({ dispose: 'auto' })
+
 stdin.on('data', async (key: string) =>
 {
+	if (is_executing) return;
 
 	// handle ctrl + c (exit)
 	if (key === '\u0003') handler.exit();
@@ -268,6 +198,8 @@ stdin.on('data', async (key: string) =>
 
 		const cleaned = buffer.replace(/\n|\r/g, '')
 
+		is_executing = true;
+
 		try {
 
 			const answer = isRibCmd(cleaned);
@@ -276,6 +208,10 @@ stdin.on('data', async (key: string) =>
 			activeController = new AbortController();
 
 			console.log(`\n\n${chalk.hex(pallete.grey_4)("Running : ")}${answer}\n`);
+
+			// Pause stdin so it doesn't fight with the spawned child process for input
+			stdin.setRawMode(false);
+			stdin.pause();
 
 			// Pass the signal down to spawnChild
 			await spawnChild({
@@ -293,43 +229,55 @@ stdin.on('data', async (key: string) =>
 
 		} finally {
 
+			is_executing = false;
+
 			// Clear the controller once the process naturally exits or gets killed
 			activeController = null;
 
+			// Resume stdin after execution finishes
+			stdin.resume();
+			stdin.setRawMode(true);
+
+			const resetter = () =>
+			{
+				buffer = "";
+				is_prefix_initialized = false;
+				render();
+			}
+
+			return resetter();
+
 		}
-
-
-		const resetter = () =>
-		{
-			buffer = "";
-			is_prefix_initialized = false;
-			render();
-		}
-
-		return resetter();
 
 	}
-
-	// handle cursor move
-	handle_arrow_key(key);
 
 	// handle backspace
 	if (key === '\u007f' || key === '\u0008') {
-		if (buffer.length > 0) {
-			handle_buffer_change('del');
+		if (buffer.length > 0 && strWidth(prefix()) < visual_length - 1) {
+			handle_buffer_change({
+				type: 'del',
+			});
 		}
 	}
+
 	// handle tab (auto complete)
-	else if (key === '\t') {
+	if (key === '\t') {
 		if (suggestion.startsWith(buffer) && buffer.length < suggestion.length) {
 			const remainder = suggestion.slice(buffer.length);
-			handle_buffer_change('add', remainder);
+			handle_buffer_change({
+				type: 'add',
+				char: remainder,
+			});
 		}
 	}
-	// handle normal chars
-	else if (key.length === 1 && key.charCodeAt(0) >= 32) {
 
-		handle_buffer_change('add', key);
+	// handle normal chars (exclude DEL)
+	if (key.length === 1 && key.charCodeAt(0) >= 32 && key !== '\u007f') {
+
+		handle_buffer_change({
+			type: 'add',
+			char: key,
+		});
 
 	}
 
@@ -339,19 +287,92 @@ stdin.on('data', async (key: string) =>
 
 render();
 
-const handle_arrow_key = (key: string) => 
+const stripAnsi = (str: string) =>
+{
+	const ansiPattern = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+	return str.replace(ansiPattern, '');
+};
+
+const replaceBuffer = (str: string) =>
+{
+	buffer = stripAnsi(str);
+}
+
+// get display column dynamically
+const display_col = () => stdout.columns;
+
+export const handle_buffer_change = ({
+	type,
+	char,
+}: {
+	type: 'add' | 'del'
+	char?: string,
+}) =>
 {
 
-	const extracted: string[] = [];
+	switch (type) {
 
-	direction.forEach((i: string) =>
-	{
-		extracted.push(keyMap.move_cursor(i as t_direction, 0));
-	});
+		case 'add':
 
-	if (extracted.includes(key)) {
-		bc.log('a')
-		stdout.write(key)
+			let build_up: string | null = null
+
+			if (char) {
+
+				// handle \n end 
+
+				// save a space for later adding 
+				if (visual_length % (display_col()) === 0) {
+					build_up = char + '\n'
+				} else {
+					build_up = char
+				}
+
+			}
+
+
+			if (build_up) {
+				stdout.write(build_up)
+			};
+
+			replaceBuffer(buffer + build_up || '');
+
+			break;
+
+		case 'del':
+
+			stdout.write('\b \b');
+
+			const split_by_newline = buffer.split('\n')
+
+			const last_obj = split_by_newline.pop()
+
+			const sliced = last_obj!.slice(0, -1);
+
+			bc.log("last_obj: " + last_obj?.length)
+
+			if (sliced !== undefined && sliced !== "") {
+
+				bc.log(last_obj + " " + sliced)
+				split_by_newline.push(sliced)
+
+			}
+
+			const rebuild = split_by_newline.join('\n')
+
+			buffer = rebuild
+
+			bc.log(buffer);
+
+			// visual length only calc printable characters
+			const K = display_col() - 1;
+
+			const is_line_start = (visual_length - 1) > 0 && (visual_length - 1) % K === 0;
+
+			if (is_line_start) {
+				stdout.write(keyMap.move_cursor('u', 1) + '\x1b[999C');
+			}
+
+			break;
 	}
 
 }
