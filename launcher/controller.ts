@@ -7,10 +7,11 @@ import fs from "fs-extra"
 import _path from '../src/logics/path.ts'
 import path from 'path'
 import { saveIntoFile } from './utils/beforeClosing.ts'
+import ux from "./utils/user_experience.ts"
 
 import backlander from '../src/background_console/index.ts'
 
-const bc = await backlander.backlander({ dispose: 'auto' })
+// const bc = await backlander.backlander({ dispose: 'auto' })
 
 // keymap 
 
@@ -78,14 +79,17 @@ export const handler = {
 	'exit': () =>
 	{
 		if (activeController) {
+			
 			console.log("\n[!] aborted by user\n");
 			activeController.abort(); // Kills the running child process via AbortSignal
+			
 		} else {
 			// If no process is running, Ctrl+C closes the REPL entirely
 			console.log("\n\nExiting mood-core ...");
 
-			Object.entries(suggestion_list).forEach(([key, value]) => {
-				
+			Object.entries(suggestion_list).forEach(([key, value]) =>
+			{
+
 				const file_path = path.join(_path.paths.suggestions, key)
 
 				saveIntoFile({
@@ -157,24 +161,21 @@ let buffer = "";
 let visual_length = 0;
 let suggestion_list: t_suggestion_group = {};
 
-(() => {
-	
+(() =>
+{
+
 	const file_list = fs.readdirSync(_path.paths.suggestions);
 
 	for (const file of file_list) {
 
 		const fullPath = path.join(_path.paths.suggestions, file)
 
-		bc.log(file, fullPath)
-
 		if ((/\.json$/.test(file))) {
 
 			const data = fs.readJsonSync(fullPath);
-	
-			bc.log(data)
-	
+
 			const validated = validate_suggestion.safeParse(data)
-	
+
 			if (validated.success) {
 				suggestion_list[file] = validated.data;
 			}
@@ -183,7 +184,7 @@ let suggestion_list: t_suggestion_group = {};
 
 
 	}
-	
+
 })()
 
 let suggestion: string | null = null;
@@ -210,11 +211,12 @@ const render = () =>
 	{
 
 		const flatted = Object.values(suggestion_list).flatMap(suggestion =>
-			
-			Object.entries(suggestion).map(([name, {cmd, point}]) => ({ name, cmd, point }))
-			
-		).map((v) => {
-			
+
+			Object.entries(suggestion).map(([name, { cmd, point }]) => ({ name, cmd, point }))
+
+		).map((v) =>
+		{
+
 			if (v.cmd.startsWith(raw_buffer) && raw_buffer.length > 0) {
 				return v
 			}
@@ -226,7 +228,7 @@ const render = () =>
 		suggestion = flatted[0]?.cmd ?? ''
 
 		return suggestion.slice(raw_buffer.length)
-		
+
 	};
 
 	const current_ghost = ghostText();
@@ -338,6 +340,8 @@ stdin.on('data', async (key: string) =>
 				render();
 			}
 
+			ux.historyManager.add(cleaned);
+
 			return resetter();
 
 		}
@@ -351,6 +355,30 @@ stdin.on('data', async (key: string) =>
 				type: 'del',
 			});
 		}
+	}
+
+	const history_cmd = ux.historyManager.detector(key, buffer);
+
+	if (history_cmd !== undefined) {
+
+		const step = () =>
+		{
+
+			if (strWidth(buffer) <= 0) {
+				return ''
+			}
+
+			return keyMap.move_cursor('l', strWidth(buffer))
+
+		}
+
+		stdout.write(`${step()}\x1b[J`)
+		
+		buffer = history_cmd
+		
+		stdout.write(buffer)
+		
+		return render()
 	}
 
 	// handle tab (auto complete)
@@ -423,7 +451,7 @@ export const handle_buffer_change = ({
 
 			if (char) {
 				replaceBuffer(buffer + char);
-				
+
 				if ((visual_length + 1) % display_col() === 0) {
 					stdout.write('\n' + char);
 				} else {

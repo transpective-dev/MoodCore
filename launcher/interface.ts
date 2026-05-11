@@ -17,6 +17,15 @@ export const suggestion_group = z.record(
 	suggestion	
 )
 
+export const history = z.array(
+	z.object({
+		cmd: z.string(),
+		time: z.number(),
+	})
+)
+
+export type t_history = z.infer<typeof history>
+
 export type t_suggestion_group = z.infer<typeof suggestion_group>
 
 export type t_suggestion = z.infer<typeof suggestion>

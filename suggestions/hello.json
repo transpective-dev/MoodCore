@@ -1,1 +1,7 @@
-[{"name":"hello","cmd":"echo hello","point":2}]
+[
+  {
+    "name": "hello",
+    "cmd": "echo hello",
+    "point": 2
+  }
+]

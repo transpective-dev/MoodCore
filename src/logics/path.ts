@@ -30,6 +30,7 @@ const paths = {
 const dev = {
 	misc,
 	suggestions,
+	history
 }
 
 import fs from "fs-extra";
@@ -58,6 +59,7 @@ export const init_path = async () =>
 		if (t === 'file') {
 			await fs.ensureFile(i)
 		}
+
 	}
 }
 

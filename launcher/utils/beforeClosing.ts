@@ -1,5 +1,6 @@
 import { type t_suggestion } from "../interface.ts"
 import fs from 'fs-extra'
+import ux from "./user_experience.ts"
 
 export const saveIntoFile = ({
 	path,
@@ -8,5 +9,6 @@ export const saveIntoFile = ({
 	path: string,
 	data: t_suggestion
 }) => {
-	fs.writeJSONSync(path, data)
+	fs.writeJSONSync(path, data, {spaces: 2})
+	ux.historyManager.saveIntoFile()
 }
