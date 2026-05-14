@@ -76,33 +76,10 @@ function list_up(ls: (typeof header)[]) {
     return
 }
 
-function getGroupAndKey(str: string): {
-    key: string | undefined,
-    group: string | undefined
-} {
-
-    // group and name should not includes '.'
-
-    // group name or key name shouldn't startwith '.'
-    if (str.startsWith('.')) {
-        return { key: str, group: undefined }
-    }
-
-    const splited = str.split('.')
-
-    if (splited.length === 2) {
-        return { key: splited[1], group: splited[0] }
-    }
-
-    return { key: str, group: undefined }
-
-}
-
 export default {
     generate_id,
     generate_local_time,
     log_formatter,
     header,
-    list_up,
-    getGroupAndKey
+    list_up
 }

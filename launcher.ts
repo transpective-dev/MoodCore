@@ -48,11 +48,15 @@ if (execPath.endsWith(launcher_name)) {
   // point to exe file
   env.INDEX_FILE = path.join(env.GET_ROOT, index_name);
 
+  env.WHERE_EXE = path.join(env.GET_ROOT, 'launcher.exe');
+
 } else {
 
   // dev mode
-  env.GET_ROOT = path.join(root_path.fromDev);
+  env.GET_ROOT = root_path.fromDev;
 
   env.INDEX_FILE = path.join(env.GET_ROOT, "src", "logics", "index.ts");
+
+  env.WHERE_EXE = path.join(env.GET_ROOT, '.ribbon', 'launcher.exe');
 
 }

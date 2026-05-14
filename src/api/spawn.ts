@@ -1,6 +1,4 @@
-import { spawn } from "node:child_process";
-import type { ChildProcess } from "node:child_process";
-import { EventEmitter } from 'events';
+import { spawn, spawnSync } from "node:child_process";
 import iconv from 'iconv-lite';
 import { rib_conf } from "../logics/manage.ts";
 import { execution_guard } from "../logics/utils/executions/execution_guard.ts";
@@ -8,176 +6,154 @@ import { startBy } from "../logics/env.ts";
 
 const isWindows = process.platform === 'win32';
 
-const shellStatus = () => {
-    const isEnabled = rib_conf.all('config').settings.useShell;
-    if (isEnabled) {
-        return isWindows ? 'powershell.exe' : '/bin/bash';
-    }
-    return true;
+const shellStatus = () =>
+{
+
+	const useShell = rib_conf.getConfig('useShell') as boolean;
+
+	if (useShell) {
+		return isWindows ? 'powershell.exe' : '/bin/bash';
+	}
+
+	return true;
 }
 
+export const isRibCmd = (cmd: string) =>
+{
 
-export class Spawn {
+	const regex = /(?:^|\s)\brib\b(?:\s|$)/g
 
-    public emit = new EventEmitter();
+	const ifRib = process.env.INDEX_FILE?.endsWith('.exe') ? `${startBy()} "${process.env.INDEX_FILE}" ` : `bun run \"${process.env.INDEX_FILE}\" `
 
-    public child: ChildProcess | null = null;
+	if (regex.test(cmd)) {
+		return cmd.replace(regex, ifRib);
+	}
 
-    public kill = () => {
-        this.child?.kill();
-    }
-
-    private showInConsole: boolean;
-
-    constructor(showInConsole: boolean = true) {
-        this.showInConsole = showInConsole;
-    }
-
-    public spawn = (cmd: string) => {
-
-        return new Promise(async (resolve, reject) => {
-
-            this.child = spawn(cmd, {
-                shell: shellStatus(),
-                stdio: 'pipe',
-            });
-
-            const toString = (data: Buffer) => {
-                return isWindows ? iconv.decode(data, 'gbk') : data.toString();
-            }
-
-            this.child.stdout?.on('data', (data) => {
-
-                data = toString(data);
-
-                if (this.showInConsole) {
-                    process.stdout.write(data);
-                }
-
-                this.emit.emit('stdout', data);
-            });
-
-            this.child.stderr?.on('data', (data) => {
-
-                data = toString(data);
-
-                if (this.showInConsole) {
-                    process.stderr.write(data);
-                }
-
-                this.emit.emit('stderr', data);
-            });
-
-            this.child.on('exit', (code) => {
-                this.emit.emit('exit', code);
-                resolve(code)
-            });
-
-            this.child.on('error', (err) => {
-                resolve(1)
-            });
-
-        })
-
-    }
-
+	return cmd;
 }
 
-export const isRibCmd = (cmd: string) => {
+const init_spawn_config = (cmd: string, shell: ReturnType<typeof shellStatus>): { executable: string, processArgs: string[], useShell: boolean | string } =>
+{
 
-    const regex = /(?:^|\s)\brib\b(?:\s|$)/g
+	let executable = cmd;
+	let processArgs: string[] = [];
+	let useShell: boolean | string = true;
 
-    const ifRib = process.env.INDEX_FILE?.endsWith('.exe') ? `${startBy()} "${process.env.INDEX_FILE}" ` : `bun run \"${process.env.INDEX_FILE}\" `
+	if (shell === 'powershell.exe') {
+		executable = 'powershell.exe';
 
-    if (regex.test(cmd)) {
-        return cmd.replace(regex, ifRib);
-    }
+		// reject interaction and return error
+		// prevent direct exit from system
+		processArgs = ['-NonInteractive', '-NoProfile', '-Command', cmd];
+		useShell = false;
+	} else if (shell === '/bin/bash') {
+		executable = '/bin/bash';
+		processArgs = ['-c', cmd];
+		useShell = false;
+	}
 
-    return cmd;
+	return {
+		executable,
+		processArgs,
+		useShell
+	};
+
 }
 
 // private
-
 export const spawnChild = ({
-    cmd,
-    signal,
-    pipe = false
+	cmd,
+	signal,
+	pipe = false,
 }: {
-    cmd: string;
-    signal?: AbortSignal;
-    pipe?: boolean;
-}) => {
+	cmd: string;
+	signal?: AbortSignal;
+	pipe?: boolean;
+}) =>
+{
 
-    return new Promise(async (resolve, reject) => {
+	return new Promise(async (resolve, reject) =>
+	{
 
-        // return msg if pipe
-        let message: string | undefined;
+		if (!await execution_guard(cmd)) {
+			return reject(false);
+		}
 
-        // kill child process
-        const kill = (status: boolean) => {
-            child.kill();
-            status ? resolve({
-                state: true,
-                message
-            }) : reject({
-                state: false,
-                message
-            })
-        }
+		// return msg if pipe
+		let message: string | undefined;
 
-        if (!await execution_guard(cmd)) {
-            return reject(false);
-        }
+		// kill child process
+		const kill = (status: boolean) =>
+		{
+			child.kill();
+			status ? resolve({
+				state: true,
+				message
+			}) : reject({
+				state: false,
+				message
+			})
+		}
 
-        const shell = shellStatus();
+		const shell = shellStatus();
 
-        let executable = cmd;
-        let processArgs: string[] = [];
-        let useShell: boolean | string = true;
+		const { executable, processArgs, useShell } = init_spawn_config(cmd, shell);
 
-        if (shell === 'powershell.exe') {
-            executable = 'powershell.exe';
+		const child = spawn(executable, processArgs, {
+			shell: useShell,
+			stdio: pipe ? 'pipe' : 'inherit',
+			signal: signal,
+			env: {
+				...process.env,
+				HLIN_MODE: 'interactive'
+			}
+		});
 
-            // reject interaction and return error
-            // prevent direct exit from system
-            processArgs = ['-NonInteractive', '-NoProfile', '-Command', cmd];
-            useShell = false;
-        } else if (shell === '/bin/bash') {
-            executable = '/bin/bash';
-            processArgs = ['-c', cmd];
-            useShell = false;
-        }
+		// decode
+		const toString = (data: Buffer) =>
+		{
+			return isWindows ? iconv.decode(data, 'utf8') : data.toString();
+		}
 
-        const child = spawn(executable, processArgs, {
-            shell: useShell,
-            stdio: pipe ? 'pipe' : 'inherit',
-            signal: signal,
-	    env: {
+		child.stdout?.on('data', (data) =>
+		{
+			message = (message || '') + toString(data);
+		});
+
+		child.stderr?.on('data', (data) =>
+		{
+			message = (message || '') + toString(data);
+		});
+
+		child.on('exit', (code) =>
+		{
+			code === 0 ? kill(true) : kill(false)
+		});
+
+		child.on('error', (err) =>
+		{
+			kill(false);
+		});
+
+	})
+}
+
+export const spawnAgent = (agentName: string) =>
+{
+
+	const interceptor = process.env.WHERE_EXE as string;
+
+	const newEnv = {
 		...process.env,
-		HLIN_MODE: 'interactive'
-	    }
-        });
+		HLIN_MODE: 'agent',
+		SHELL: interceptor,
+		COMSPEC: interceptor,
+	}
 
-        // decode
-        const toString = (data: Buffer) => {
-            return isWindows ? iconv.decode(data, 'utf8') : data.toString();
-        }
+	spawn(agentName, [], {
+		detached: true,
+		env: newEnv,
+		stdio: 'inherit',
+	})
 
-        child.stdout?.on('data', (data) => {
-            message = (message || '') + toString(data);
-        });
-
-        child.stderr?.on('data', (data) => {
-            message = (message || '') + toString(data);
-        });
-
-        child.on('exit', (code) => {
-            code === 0 ? kill(true) : kill(false)
-        });
-
-        child.on('error', (err) => {
-            kill(false);
-        });
-
-    })
 }

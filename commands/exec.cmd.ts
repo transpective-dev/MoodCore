@@ -81,24 +81,11 @@ export default {
             return;
         }
 
-        const {
-            group,
-            key
-        } = utils.getGroupAndKey(alia);
+        const get_cmd = async (key: string = alia) => {
 
-        const get_cmd = async (key: string = '', group?: string) => {
+            console.log('[ key ]: ', key , '\n')
 
-            const form: {
-                key: string,
-                group?: string
-            } = { key }
-
-            group && (form.group = group)
-
-            console.log('[group]: ', group)
-            console.log('[ key ]: ', key)
-
-            const res = rib_conf.get(form)
+            const res = rib_conf.get(key)
 
             if (res === null || res === undefined) {
 
@@ -107,17 +94,12 @@ export default {
                     name: 'get',
                     message: 'Command not found',
                     choices: [
-                        { name: 'global', message: 'try global search' },
                         { name: 'new', message: 'try new' },
                         { name: 'exit', message: 'exit' }
                     ]
                 })
 
                 if ('get' in get_select) {
-
-                    if (get_select.get === 'global') {
-                        return await get_cmd(key)
-                    }
 
                     if (get_select.get === 'new') {
 
@@ -128,8 +110,7 @@ export default {
                         })
 
                         if ('get' in get_input) {
-                            const { group, key } = utils.getGroupAndKey(get_input.get as string);
-                            return await get_cmd(key, group);
+                            return await get_cmd(get_input.get as string);
                         }
                     }
 
@@ -146,7 +127,7 @@ export default {
 
         };
 
-        const get = await get_cmd(key, group);
+        const get = await get_cmd();
 
         if (!get) {
             console.log(colored_prefix.error + 'command not found');
@@ -162,7 +143,7 @@ export default {
         replaced_cmd = isRibCmd(replaced_cmd);
 
         spawnChild({
-            cmd: replaced_cmd
+            cmd: replaced_cmd,
         });
 
     }

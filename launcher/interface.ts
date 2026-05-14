@@ -29,3 +29,5 @@ export type t_history = z.infer<typeof history>
 export type t_suggestion_group = z.infer<typeof suggestion_group>
 
 export type t_suggestion = z.infer<typeof suggestion>
+
+export const shellMode = ['specified', 'system', 'default'] as const
